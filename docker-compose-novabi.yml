@@ -1,0 +1,45 @@
+x-superset-image: &superset-image apache/superset:${TAG:-latest-dev}
+x-superset-depends-on: &superset-depends-on
+  - db
+  - redis
+x-superset-volumes: &superset-volumes
+  # /app/pythonpath_docker will be appended to the PYTHONPATH in the final container
+  - ./docker:/app/docker
+  - superset_home:/app/superset_home
+
+version: '3.7'
+services:
+   https-portal:
+    image: steveltn/https-portal:1
+    ports:
+      - '443:443'
+      - '80:80'
+    links:
+      - superset
+    restart: unless-stopped
+    environment:
+      DOMAINS: 'bi.novacept.io -> http://superset:8088'
+    #   STAGE: 'production' # Don't use production until staging works
+    #   # FORCE_RENEW: 'true'
+    #   WEBSOCKET: 'true'
+    volumes: 
+      - https-portal-data:/var/lib/https-portal
+
+   superset:
+    env_file: docker/.env-non-dev
+    image: *superset-image
+    container_name: superset_app
+    command: ["/app/docker/docker-bootstrap.sh", "app-gunicorn"]
+    user: "root"
+    restart: unless-stopped
+    ports:
+      - 8088:8088
+    depends_on: *superset-depends-on
+    volumes: *superset-volumes
+    
+
+volumes:
+  superset_home:
+    external: false
+  
+       
